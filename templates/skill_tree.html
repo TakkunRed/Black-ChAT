@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Corpus2Skill — スキルツリービューア</title>
+    <!-- FOUC 防止: CSS より先にテーマを適用 -->
+    <script>
+        (function(){
+            var t = localStorage.getItem('theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', t);
+            if (t === 'light') document.documentElement.classList.add('light-theme');
+        })();
+    </script>
+    <style>
+        /* ── CSS 変数（テーマ） ── */
+        :root {
+            --p-bg:            #0d0d14;
+            --p-bg-deep:       #0b0b14;
+            --p-surface:       #10101a;
+            --p-card:          #13131f;
+            --p-card-sub:      #0f0f1c;
+            --p-group-bg:      #0d0d18;
+            --p-border:        #1e1e2e;
+            --p-border-sub:    #1a1a2a;
+            --p-border-faint:  #171720;
+            --p-border-mid:    #222222;
+            --p-text:          #cccccc;
+            --p-text-bright:   #e2e2ff;
+            --p-text-mid:      #999999;
+            --p-text-dim:      #666666;
+            --p-text-faint:    #555555;
+            --p-text-ghost:    #444444;
+            --p-skill-col:     #d4d4ff;
+            --p-group-col:     #b4b4d8;
+            --p-accent:        #6366f1;
+            --p-accent-soft:   #818cf8;
+            --p-accent-bg:     #1e1e40;
+            --p-accent-bdr:    rgba(51,51,170,.27);
+            --p-hover-1:       #1a1a2a;
+            --p-hover-2:       #14141e;
+            --p-active-1:      #1c1c30;
+            --p-active-2:      #1a1a30;
+            --p-select:        #141428;
+            --p-input-bg:      #1a1a2a;
+            --p-input-bdr:     #2a2a3e;
+            --p-btn-bg:        #1e1e2e;
+            --p-btn-bdr:       #333333;
+            --p-btn-txt:       #aaaaaa;
+            --p-btn-hover:     #2a2a3e;
+            --p-grp-badge-bg:  #181828;
+            --p-grp-badge-bdr: #2a2a50;
+            --p-spinner:       #222222;
+            --p-scrollbar:     #2a2a3e;
+            --p-scrollbar-h:   #3a3a5e;
+            --p-mark-bg:       rgba(99,102,241,.33);
+            --p-mark-text:     #c7d2fe;
+            --p-chunk-bdr:     #111118;
+            --p-chunk-hover:   #111120;
+        }
+        html[data-theme="light"], body.light-theme {
+            --p-bg:            #f0f2f8;
+            --p-bg-deep:       #eceef8;
+            --p-surface:       #e8eaf0;
+            --p-card:          #ffffff;
+            --p-card-sub:      #f4f6fe;
+            --p-group-bg:      #eceef8;
+            --p-border:        #c8cce0;
+            --p-border-sub:    #d4d8ea;
+            --p-border-faint:  #dde0ee;
+            --p-border-mid:    #c8cce0;
+            --p-text:          #1a1a30;
+            --p-text-bright:   #111130;
+            --p-text-mid:      #5a5a7a;
+            --p-text-dim:      #7777aa;
+            --p-text-faint:    #8888aa;
+            --p-text-ghost:    #9999bb;
+            --p-skill-col:     #2222aa;
+            --p-group-col:     #4444aa;
+            --p-accent:        #4f46e5;
+            --p-accent-soft:   #6366f1;
+            --p-accent-bg:     #eef0ff;
+            --p-accent-bdr:    rgba(99,102,241,.3);
+            --p-hover-1:       #dde0ee;
+            --p-hover-2:       #e4e7f2;
+            --p-active-1:      #d8dbef;
+            --p-active-2:      #d0d4ea;
+            --p-select:        #e8eafe;
+            --p-input-bg:      #ffffff;
+            --p-input-bdr:     #c8cce0;
+            --p-btn-bg:        #e0e3f0;
+            --p-btn-bdr:       #c0c4d8;
+            --p-btn-txt:       #555577;
+            --p-btn-hover:     #d0d4e8;
+            --p-grp-badge-bg:  #e8eaf0;
+            --p-grp-badge-bdr: #c8cce0;
+            --p-spinner:       #cccccc;
+            --p-scrollbar:     #c0c4d8;
+            --p-scrollbar-h:   #a0a4c0;
+            --p-mark-bg:       rgba(99,102,241,.2);
+            --p-mark-text:     #2d2d8f;
+            --p-chunk-bdr:     #dde0ef;
+            --p-chunk-hover:   #eef0fa;
+        }
+
+        /* ── リセット・ベース ── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--p-bg);
+            color: var(--p-text);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* ── ヘッダー ── */
+        header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 20px;
+            background: var(--p-card);
+            border-bottom: 1px solid var(--p-border-mid);
+            flex-shrink: 0;
+        }
+        header h1 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--p-text-bright);
+            flex: 1;
+        }
+        header .meta {
+            font-size: 12px;
+            color: var(--p-text-faint);
+        }
+        .btn-back {
+            background: var(--p-btn-bg);
+            border: 1px solid var(--p-btn-bdr);
+            color: var(--p-btn-txt);
+            padding: 5px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            text-decoration: none;
+            transition: background .15s;
+        }
+        .btn-back:hover { background: var(--p-btn-hover); color: var(--p-text-bright); }
+        .btn-theme {
+            background: var(--p-btn-bg);
+            border: 1px solid var(--p-btn-bdr);
+            color: var(--p-btn-txt);
+            padding: 5px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background .15s;
+            line-height: 1;
+        }
+        .btn-theme:hover { background: var(--p-btn-hover); }
+
+        /* ── 検索バー ── */
+        .search-bar {
+            padding: 8px 20px;
+            background: var(--p-surface);
+            border-bottom: 1px solid var(--p-border-sub);
+            flex-shrink: 0;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .search-bar input {
+            flex: 1;
+            background: var(--p-input-bg);
+            border: 1px solid var(--p-input-bdr);
+            border-radius: 6px;
+            padding: 6px 12px;
+            color: var(--p-text);
+            font-size: 13px;
+            outline: none;
+        }
+        .search-bar input:focus { border-color: var(--p-accent); }
+        .search-bar .count-label { font-size: 12px; color: var(--p-text-faint); white-space: nowrap; }
+
+        /* ── メインレイアウト ── */
+        .main {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* ── ツリーパネル ── */
+        .tree-panel {
+            width: 380px;
+            min-width: 260px;
+            max-width: 520px;
+            background: var(--p-surface);
+            border-right: 1px solid var(--p-border);
+            overflow-y: auto;
+            overflow-x: hidden;
+            flex-shrink: 0;
+            padding: 12px 0;
+            resize: horizontal;
+        }
+
+        /* ── スキルノード ── */
+        .skill-node {
+            border-bottom: 1px solid var(--p-border-faint);
+        }
+        .skill-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            cursor: pointer;
+            transition: background .15s;
+            user-select: none;
+        }
+        .skill-header:hover { background: var(--p-hover-1); }
+        .skill-header.active { background: var(--p-active-1); }
+        .skill-toggle {
+            font-size: 10px;
+            color: var(--p-text-faint);
+            transition: transform .2s;
+            flex-shrink: 0;
+            width: 14px;
+        }
+        .skill-toggle.open { transform: rotate(90deg); color: var(--p-accent); }
+        .skill-icon { font-size: 16px; flex-shrink: 0; }
+        .skill-label {
+            flex: 1;
+            overflow: hidden;
+        }
+        .skill-topic {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--p-skill-col);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .skill-sub-meta {
+            font-size: 10px;
+            color: var(--p-text-faint);
+            margin-top: 2px;
+        }
+        .skill-badge {
+            font-size: 10px;
+            background: var(--p-accent-bg);
+            border: 1px solid var(--p-accent-bdr);
+            color: var(--p-accent);
+            border-radius: 10px;
+            padding: 1px 7px;
+            flex-shrink: 0;
+        }
+
+        /* ── グループリスト ── */
+        .group-list {
+            display: none;
+            padding-left: 0;
+            background: var(--p-group-bg);
+        }
+        .group-list.open { display: block; }
+
+        /* ── グループノード ── */
+        .group-node { border-top: 1px solid var(--p-border-faint); }
+        .group-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px 8px 32px;
+            cursor: pointer;
+            transition: background .15s;
+            user-select: none;
+        }
+        .group-header:hover { background: var(--p-hover-2); }
+        .group-header.selected { background: var(--p-active-2); border-left: 2px solid var(--p-accent); }
+        .group-toggle {
+            font-size: 10px;
+            color: var(--p-text-ghost);
+            transition: transform .2s;
+            flex-shrink: 0;
+            width: 14px;
+        }
+        .group-toggle.open { transform: rotate(90deg); color: var(--p-accent-soft); }
+        .group-topic {
+            flex: 1;
+            font-size: 12px;
+            color: var(--p-group-col);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .group-badge {
+            font-size: 10px;
+            background: var(--p-grp-badge-bg);
+            border: 1px solid var(--p-grp-badge-bdr);
+            color: var(--p-text-faint);
+            border-radius: 10px;
+            padding: 1px 6px;
+            flex-shrink: 0;
+        }
+
+        /* ── チャンクリスト ── */
+        .chunk-list {
+            display: none;
+            background: var(--p-bg-deep);
+        }
+        .chunk-list.open { display: block; }
+        .chunk-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            padding: 7px 16px 7px 48px;
+            cursor: pointer;
+            border-top: 1px solid var(--p-chunk-bdr);
+            transition: background .12s;
+        }
+        .chunk-item:hover { background: var(--p-chunk-hover); }
+        .chunk-item.selected { background: var(--p-select); border-left: 2px solid var(--p-accent-soft); }
+        .chunk-icon { font-size: 11px; color: var(--p-text-ghost); flex-shrink: 0; margin-top: 2px; }
+        .chunk-preview {
+            font-size: 11px;
+            color: var(--p-text-dim);
+            line-height: 1.4;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+        .chunk-item.selected .chunk-preview { color: var(--p-text-mid); }
+        .chunk-doc {
+            font-size: 10px;
+            color: var(--p-text-ghost);
+            white-space: nowrap;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        /* ── 詳細パネル ── */
+        .detail-panel {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px 28px;
+            background: var(--p-bg);
+        }
+
+        .detail-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            gap: 12px;
+            color: var(--p-text-faint);
+        }
+        .detail-placeholder .icon { font-size: 48px; }
+        .detail-placeholder p { font-size: 14px; }
+
+        /* ── スキル詳細 ── */
+        .detail-breadcrumb {
+            font-size: 11px;
+            color: var(--p-text-faint);
+            margin-bottom: 16px;
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .detail-breadcrumb span { color: var(--p-text-ghost); }
+        .detail-breadcrumb .crumb { color: var(--p-accent); }
+
+        .detail-section {
+            background: var(--p-card);
+            border: 1px solid var(--p-border);
+            border-radius: 10px;
+            padding: 18px 20px;
+            margin-bottom: 16px;
+        }
+        .detail-section-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--p-accent);
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .detail-topic {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--p-text-bright);
+            margin-bottom: 10px;
+            line-height: 1.4;
+        }
+        .detail-summary {
+            font-size: 13px;
+            color: var(--p-text-mid);
+            line-height: 1.8;
+        }
+
+        /* ── チャンクテキスト ── */
+        .chunk-text-box {
+            background: var(--p-bg-deep);
+            border: 1px solid var(--p-border-sub);
+            border-radius: 8px;
+            padding: 16px;
+            font-size: 13px;
+            color: var(--p-text);
+            line-height: 1.8;
+            white-space: pre-wrap;
+            word-break: break-word;
+            max-height: 480px;
+            overflow-y: auto;
+        }
+        .chunk-meta-row {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+        .chunk-meta-tag {
+            font-size: 11px;
+            background: var(--p-hover-1);
+            border: 1px solid var(--p-input-bdr);
+            border-radius: 4px;
+            padding: 2px 8px;
+            color: var(--p-accent-soft);
+        }
+
+        /* ── サマリーカード（スキル選択時） ── */
+        .sub-summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 12px;
+            margin-top: 12px;
+        }
+        .sub-card {
+            background: var(--p-card-sub);
+            border: 1px solid var(--p-border);
+            border-radius: 8px;
+            padding: 14px 16px;
+            cursor: pointer;
+            transition: border-color .15s, background .15s;
+        }
+        .sub-card:hover { border-color: var(--p-accent); background: var(--p-select); }
+        .sub-card-topic {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--p-group-col);
+            margin-bottom: 6px;
+        }
+        .sub-card-summary {
+            font-size: 11px;
+            color: var(--p-text-dim);
+            line-height: 1.6;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .sub-card-count {
+            font-size: 10px;
+            color: var(--p-text-ghost);
+            margin-top: 8px;
+        }
+
+        /* ── 検索ハイライト ── */
+        mark {
+            background: var(--p-mark-bg);
+            color: var(--p-mark-text);
+            border-radius: 2px;
+            padding: 0 2px;
+        }
+
+        /* ── スクロールバー ── */
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--p-scrollbar); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--p-scrollbar-h); }
+
+        /* ── ローディング ── */
+        .loading-spinner {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 200px;
+            color: var(--p-text-ghost);
+            font-size: 14px;
+            gap: 10px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spinner {
+            width: 20px; height: 20px;
+            border: 2px solid var(--p-spinner);
+            border-top-color: var(--p-accent);
+            border-radius: 50%;
+            animation: spin .8s linear infinite;
+        }
+
+        /* ── 非表示 ── */
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+<!-- ヘッダー -->
+<header>
+    <a href="/" class="btn-back">← チャットに戻る</a>
+    <h1>🌳 Corpus2Skill — スキルツリービューア</h1>
+    <div class="meta" id="headerMeta">読み込み中...</div>
+    <button class="btn-theme" id="themeToggleBtn" onclick="toggleTheme()">🌙</button>
+</header>
+
+<!-- 検索バー -->
+<div class="search-bar">
+    <input type="text" id="searchInput" placeholder="スキル・グループ・チャンクを検索..." oninput="filterTree(this.value)">
+    <div class="count-label" id="countLabel"></div>
+</div>
+
+<!-- メインレイアウト -->
+<div class="main">
+    <!-- ツリーパネル -->
+    <div class="tree-panel" id="treePanel">
+        <div class="loading-spinner" id="treeLoading">
+            <div class="spinner"></div>読み込み中...
+        </div>
+    </div>
+
+    <!-- 詳細パネル -->
+    <div class="detail-panel" id="detailPanel">
+        <div class="detail-placeholder" id="detailPlaceholder">
+            <div class="icon">🌿</div>
+            <p>左のツリーからスキルまたはチャンクを選択してください</p>
+        </div>
+        <div id="detailContent" class="hidden"></div>
+    </div>
+</div>
+
+<script>
+    // ── テーマ ────────────────────────────────────────────────────────
+    function applyTheme(t) {
+        document.documentElement.setAttribute('data-theme', t);
+        document.body.classList.toggle('light-theme', t === 'light');
+        const btn = document.getElementById('themeToggleBtn');
+        if (btn) btn.textContent = t === 'light' ? '☀️' : '🌙';
+    }
+    function toggleTheme() {
+        const current = localStorage.getItem('theme') || 'dark';
+        const next = current === 'dark' ? 'light' : 'dark';
+        localStorage.setItem('theme', next);
+        applyTheme(next);
+    }
+
+    // ── データ ────────────────────────────────────────────────────────
+    let allSkills = [];
+    let selectedKey = null;  // "skill:N" | "group:N:M" | "chunk:N:M:K"
+
+    // ── 初期化 ────────────────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', function() {
+        applyTheme(localStorage.getItem('theme') || 'dark');
+        loadSkillTree();
+    });
+
+    async function loadSkillTree() {
+        try {
+            const res  = await fetch('/api/skill-tree');
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            allSkills = data.skills || [];
+
+            const totalSkills  = allSkills.length;
+            const totalGroups  = allSkills.reduce((n, s) => n + (s.sub_skills?.length || 0), 0);
+            const totalChunks  = data.total_chunks || 0;
+
+            document.getElementById('headerMeta').textContent =
+                `スキル: ${totalSkills} / グループ: ${totalGroups} / チャンク: ${totalChunks}`;
+            document.getElementById('countLabel').textContent =
+                `${totalSkills} スキル`;
+
+            renderTree(allSkills);
+        } catch (e) {
+            document.getElementById('treeLoading').innerHTML =
+                `<span style="color:#f87171">⚠️ 読み込み失敗: ${e.message}</span>`;
+        }
+    }
+
+    // ── ツリー描画 ────────────────────────────────────────────────────
+    function renderTree(skills) {
+        const panel = document.getElementById('treePanel');
+        if (skills.length === 0) {
+            panel.innerHTML = '<div style="padding:20px;color:var(--p-text-faint);font-size:13px;">スキルがありません。まずドキュメントを追加してください。</div>';
+            return;
+        }
+
+        panel.innerHTML = skills.map((skill, si) => buildSkillNode(skill, si)).join('');
+    }
+
+    function buildSkillNode(skill, si) {
+        const groups = (skill.sub_skills || []).map((grp, gi) => buildGroupNode(skill, si, grp, gi)).join('');
+        const chunkTotal = (skill.sub_skills || []).reduce((n, g) => n + (g.chunks?.length || 0), 0);
+        return `
+        <div class="skill-node" id="skill-node-${si}">
+            <div class="skill-header" onclick="toggleSkill(${si})" id="skill-hdr-${si}">
+                <span class="skill-toggle" id="skill-tog-${si}">▶</span>
+                <span class="skill-icon">📚</span>
+                <div class="skill-label">
+                    <div class="skill-topic" title="${esc(skill.topic)}">${esc(skill.topic)}</div>
+                    <div class="skill-sub-meta">${(skill.sub_skills||[]).length} グループ · ${chunkTotal} チャンク</div>
+                </div>
+                <span class="skill-badge">${skill.idx}</span>
+            </div>
+            <div class="group-list" id="skill-grp-${si}">
+                ${groups}
+            </div>
+        </div>`;
+    }
+
+    function buildGroupNode(skill, si, grp, gi) {
+        const chunks = (grp.chunks || []).map((c, ci) => buildChunkItem(si, gi, c, ci)).join('');
+        return `
+        <div class="group-node" id="grp-node-${si}-${gi}">
+            <div class="group-header" onclick="toggleGroup(${si},${gi})" id="grp-hdr-${si}-${gi}">
+                <span class="group-toggle" id="grp-tog-${si}-${gi}">▶</span>
+                <span class="group-topic" title="${esc(grp.topic)}">${esc(grp.topic)}</span>
+                <span class="group-badge">${grp.chunks?.length || 0}</span>
+            </div>
+            <div class="chunk-list" id="grp-clist-${si}-${gi}">
+                ${chunks}
+            </div>
+        </div>`;
+    }
+
+    function buildChunkItem(si, gi, chunk, ci) {
+        const preview = (chunk.text || '').replace(/\n/g, ' ').substring(0, 120);
+        const docShort = chunk.doc_id.length > 20
+            ? '…' + chunk.doc_id.slice(-18)
+            : chunk.doc_id;
+        return `
+        <div class="chunk-item" id="chunk-${si}-${gi}-${ci}"
+             onclick="selectChunk(${si},${gi},${ci})">
+            <span class="chunk-icon">📄</span>
+            <span class="chunk-preview" id="chunk-prev-${si}-${gi}-${ci}">${esc(preview)}…</span>
+            <span class="chunk-doc" title="${esc(chunk.doc_id)}">#${chunk.chunk_idx}</span>
+        </div>`;
+    }
+
+    // ── ツリー開閉 ────────────────────────────────────────────────────
+    function toggleSkill(si) {
+        const grpList = document.getElementById(`skill-grp-${si}`);
+        const tog     = document.getElementById(`skill-tog-${si}`);
+        const isOpen  = grpList.classList.contains('open');
+        grpList.classList.toggle('open', !isOpen);
+        tog.classList.toggle('open', !isOpen);
+        if (!isOpen) showSkillDetail(si);
+    }
+
+    function toggleGroup(si, gi) {
+        const clist = document.getElementById(`grp-clist-${si}-${gi}`);
+        const tog   = document.getElementById(`grp-tog-${si}-${gi}`);
+        const isOpen = clist.classList.contains('open');
+        clist.classList.toggle('open', !isOpen);
+        tog.classList.toggle('open', !isOpen);
+        if (!isOpen) showGroupDetail(si, gi);
+        // グループを選択
+        document.querySelectorAll('.group-header').forEach(h => h.classList.remove('selected'));
+        document.getElementById(`grp-hdr-${si}-${gi}`)?.classList.add('selected');
+    }
+
+    // ── チャンク選択 ───────────────────────────────────────────────────
+    function selectChunk(si, gi, ci) {
+        document.querySelectorAll('.chunk-item').forEach(el => el.classList.remove('selected'));
+        document.getElementById(`chunk-${si}-${gi}-${ci}`)?.classList.add('selected');
+        showChunkDetail(si, gi, ci);
+    }
+
+    // ── 詳細パネル描画 ────────────────────────────────────────────────
+    function showDetail(html) {
+        document.getElementById('detailPlaceholder').classList.add('hidden');
+        const dc = document.getElementById('detailContent');
+        dc.classList.remove('hidden');
+        dc.innerHTML = html;
+    }
+
+    function showSkillDetail(si) {
+        const skill = allSkills[si];
+        if (!skill) return;
+        const subCards = (skill.sub_skills || []).map((grp, gi) => `
+            <div class="sub-card" onclick="toggleGroup(${si},${gi}); document.getElementById('grp-clist-${si}-${gi}').classList.add('open');">
+                <div class="sub-card-topic">📂 ${esc(grp.topic)}</div>
+                <div class="sub-card-summary">${esc(grp.summary || '')}</div>
+                <div class="sub-card-count">${grp.chunks?.length || 0} チャンク</div>
+            </div>`).join('');
+
+        showDetail(`
+            <div class="detail-breadcrumb">
+                <span>スキルツリー</span>
+                <span>›</span>
+                <span class="crumb">📚 ${esc(skill.topic)}</span>
+            </div>
+            <div class="detail-section">
+                <div class="detail-section-title">📚 スキル #${skill.idx}</div>
+                <div class="detail-topic">${esc(skill.topic)}</div>
+                <div class="detail-summary">${esc(skill.summary || '（サマリーなし）')}</div>
+            </div>
+            <div class="detail-section">
+                <div class="detail-section-title">📂 グループ一覧（${(skill.sub_skills||[]).length}件）</div>
+                <div class="sub-summary-grid">${subCards || '<div style="color:var(--p-text-faint);font-size:12px;">グループがありません</div>'}</div>
+            </div>`);
+    }
+
+    function showGroupDetail(si, gi) {
+        const skill = allSkills[si];
+        const grp   = skill?.sub_skills?.[gi];
+        if (!grp) return;
+
+        const chunkRows = (grp.chunks || []).map((c, ci) => `
+            <div class="chunk-item" style="padding-left:0; border-radius:6px; border:1px solid var(--p-border-sub); margin-bottom:6px;"
+                 onclick="selectChunk(${si},${gi},${ci})">
+                <span class="chunk-icon" style="margin-left:8px;">📄</span>
+                <span class="chunk-preview">${esc((c.text||'').replace(/\n/g,' ').substring(0,100))}…</span>
+                <span class="chunk-doc">#${c.chunk_idx}</span>
+            </div>`).join('');
+
+        showDetail(`
+            <div class="detail-breadcrumb">
+                <span>スキルツリー</span>
+                <span>›</span>
+                <span class="crumb" style="cursor:pointer;" onclick="showSkillDetail(${si})">📚 ${esc(skill.topic)}</span>
+                <span>›</span>
+                <span class="crumb">📂 ${esc(grp.topic)}</span>
+            </div>
+            <div class="detail-section">
+                <div class="detail-section-title">📂 グループ #${gi}</div>
+                <div class="detail-topic">${esc(grp.topic)}</div>
+                <div class="detail-summary">${esc(grp.summary || '（サマリーなし）')}</div>
+            </div>
+            <div class="detail-section">
+                <div class="detail-section-title">📄 チャンク一覧（${grp.chunks?.length || 0}件）</div>
+                ${chunkRows || '<div style="color:var(--p-text-faint);font-size:12px;">チャンクがありません</div>'}
+            </div>`);
+    }
+
+    function showChunkDetail(si, gi, ci) {
+        const skill = allSkills[si];
+        const grp   = skill?.sub_skills?.[gi];
+        const chunk = grp?.chunks?.[ci];
+        if (!chunk) return;
+
+        const textHtml = esc(chunk.text || '（テキストなし）');
+        showDetail(`
+            <div class="detail-breadcrumb">
+                <span>スキルツリー</span>
+                <span>›</span>
+                <span class="crumb" style="cursor:pointer;" onclick="showSkillDetail(${si})">📚 ${esc(skill.topic)}</span>
+                <span>›</span>
+                <span class="crumb" style="cursor:pointer;" onclick="showGroupDetail(${si},${gi})">📂 ${esc(grp.topic)}</span>
+                <span>›</span>
+                <span class="crumb">📄 チャンク #${chunk.chunk_idx}</span>
+            </div>
+            <div class="detail-section">
+                <div class="detail-section-title">📄 チャンク情報</div>
+                <div class="chunk-meta-row">
+                    <span class="chunk-meta-tag">ドキュメント: ${esc(chunk.doc_id)}</span>
+                    <span class="chunk-meta-tag">チャンク #${chunk.chunk_idx}</span>
+                    <span class="chunk-meta-tag">${(chunk.text||'').length} 文字</span>
+                </div>
+                <div class="detail-section-title" style="margin-top:10px;">📝 テキスト</div>
+                <div class="chunk-text-box">${textHtml}</div>
+            </div>
+            <div class="detail-section">
+                <div class="detail-section-title">🗂️ 属するグループ</div>
+                <div class="detail-topic" style="font-size:14px;">${esc(grp.topic)}</div>
+                <div class="detail-summary">${esc(grp.summary || '（サマリーなし）')}</div>
+            </div>`);
+    }
+
+    // ── フィルタ ──────────────────────────────────────────────────────
+    function filterTree(query) {
+        query = query.trim().toLowerCase();
+        const panel = document.getElementById('treePanel');
+
+        if (!query) {
+            renderTree(allSkills);
+            document.getElementById('countLabel').textContent = `${allSkills.length} スキル`;
+            return;
+        }
+
+        // スキル・グループ・チャンクそれぞれをクエリでフィルタ
+        const filtered = [];
+        for (const skill of allSkills) {
+            const matchedSubs = [];
+            for (const grp of (skill.sub_skills || [])) {
+                const matchedChunks = (grp.chunks || []).filter(c =>
+                    c.text?.toLowerCase().includes(query) ||
+                    c.doc_id?.toLowerCase().includes(query)
+                );
+                const grpMatch = grp.topic?.toLowerCase().includes(query) ||
+                                 grp.summary?.toLowerCase().includes(query);
+                if (grpMatch || matchedChunks.length > 0) {
+                    matchedSubs.push({ ...grp, chunks: grpMatch ? grp.chunks : matchedChunks });
+                }
+            }
+            const skillMatch = skill.topic?.toLowerCase().includes(query) ||
+                               skill.summary?.toLowerCase().includes(query);
+            if (skillMatch || matchedSubs.length > 0) {
+                filtered.push({ ...skill, sub_skills: skillMatch ? skill.sub_skills : matchedSubs });
+            }
+        }
+
+        panel.innerHTML = filtered.length
+            ? filtered.map((skill, si) => buildSkillNode(skill, si)).join('')
+            : '<div style="padding:20px;color:var(--p-text-faint);font-size:13px;">一致するスキルが見つかりません</div>';
+
+        // 検索時はすべて展開
+        filtered.forEach((_, si) => {
+            document.getElementById(`skill-grp-${si}`)?.classList.add('open');
+            document.getElementById(`skill-tog-${si}`)?.classList.add('open');
+            (filtered[si].sub_skills || []).forEach((_, gi) => {
+                document.getElementById(`grp-clist-${si}-${gi}`)?.classList.add('open');
+                document.getElementById(`grp-tog-${si}-${gi}`)?.classList.add('open');
+            });
+        });
+
+        document.getElementById('countLabel').textContent =
+            `${filtered.length} / ${allSkills.length} スキル`;
+    }
+
+    // ── エスケープ ────────────────────────────────────────────────────
+    function esc(str) {
+        if (!str) return '';
+        return str
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+</script>
+</body>
+</html>

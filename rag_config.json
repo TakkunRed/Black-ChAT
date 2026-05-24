@@ -1,0 +1,7 @@
+{
+  "llm_model": "llama-3.3-8b-instruct",
+  "max_top_skills": 6,
+  "branching_factor": 4,
+  "chunk_max_chars": 200,
+  "overlap_chars": 80
+}
