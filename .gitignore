@@ -1,0 +1,10 @@
+.claude
+.venv
+__pycache__
+c2s_db
+mem0_db
+rag_docs
+.env
+chat_history.json
+uv.lock
+note_article.md
